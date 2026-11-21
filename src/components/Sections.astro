@@ -1,0 +1,14 @@
+---
+import type { Section } from '../data/types';
+interface Props { sections: Section[] }
+const { sections } = Astro.props;
+---
+<div class="prose-po max-w-3xl">
+  {sections.map((s) => (
+    <section>
+      <h2>{s.h2}</h2>
+      {s.paras?.map((p) => <p set:html={p} />)}
+      {s.list && <ul>{s.list.map((li) => <li set:html={li} />)}</ul>}
+    </section>
+  ))}
+</div>

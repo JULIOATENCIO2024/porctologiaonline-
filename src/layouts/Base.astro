@@ -1,0 +1,172 @@
+---
+// Plantilla de todas las páginas indexables. Para las landings de pauta se usa Landing.astro (sin menú).
+import '../styles/global.css';
+import Tracking from '../components/Tracking.astro';
+import Cookie from '../components/Cookie.astro';
+import Logo from '../components/Logo.astro';
+import Icon from '../components/Icon.astro';
+import { site, waHref } from '../data/site';
+import type { Lang } from '../data/types';
+import { content, alternates, pageHref, conditionHref, prefix, HTML_LANG, OG_LOCALE, LANGS, lpTag, type Route } from '../lib/routes';
+
+interface Props {
+  route: Route;
+  title: string;
+  description: string;
+  schema?: unknown;
+  noindex?: boolean;
+  landing?: boolean; // sin menú (landings de pauta)
+}
+const { route, title, description, schema, noindex = false, landing = false } = Astro.props;
+const lang: Lang = route.lang;
+const { ui, conditions } = content[lang];
+const canonical = new URL(route.path, site.url).href;
+const alts = alternates(route);
+const LABEL: Record<Lang, string> = { es: 'ES', en: 'EN', fr: 'FR' };
+const wa = waHref(`${ui.waMsg} (${LABEL[lang]} · ${lpTag(route)})`);
+const waExternal = wa.startsWith('http');
+const EXTRA: Record<Lang, [string, string]> = {
+  es: ['Segunda opinión antes de operarte', 'Tratarte en Lima'],
+  en: ['Second opinion before surgery', 'Treatment in Lima'],
+  fr: ['Deuxième avis avant une opération', 'Se faire soigner à Lima'],
+};
+const nav = [
+  { href: pageHref(lang, 'how'), label: ui.nav.how },
+  { href: pageHref(lang, 'team'), label: ui.nav.team },
+  { href: pageHref(lang, 'price'), label: ui.nav.price },
+  { href: pageHref(lang, 'faq'), label: ui.nav.faq },
+];
+const specialties = [
+  ...conditions.map((c) => ({ href: conditionHref(lang, c.key), label: c.navLabel })),
+  { href: pageHref(lang, 'secondOpinion'), label: EXTRA[lang][0] },
+  { href: pageHref(lang, 'treatmentLima'), label: EXTRA[lang][1] },
+];
+const here = (h: string) => (h === route.path ? { 'aria-current': 'page' as const } : {});
+const year = 2026;
+---
+<!doctype html>
+<html lang={HTML_LANG[lang]}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<meta name="description" content={description}>
+<link rel="canonical" href={canonical}>
+<meta name="robots" content={noindex ? 'noindex,nofollow' : 'index,follow,max-image-preview:large'}>
+{!noindex && LANGS.filter((l) => alts[l]).map((l) => <link rel="alternate" hreflang={l} href={new URL(alts[l]!, site.url).href} />)}
+{!noindex && alts.es && <link rel="alternate" hreflang="x-default" href={new URL(alts.es, site.url).href} />}
+<meta name="theme-color" content="#1E6E25">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/fraunces-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/figtree-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:title" content={title}>
+<meta property="og:description" content={description}>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content={site.name}>
+<meta property="og:locale" content={OG_LOCALE[lang]}>
+<meta property="og:url" content={canonical}>
+<meta property="og:image" content={`${site.url}/og.jpg`}>
+{schema && <script type="application/ld+json" set:html={JSON.stringify(schema)} />}
+<Tracking lang={lang} />
+</head>
+<body class="min-h-screen">
+<a href="#contenido" class="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-white focus:p-2">{ui.skip}</a>
+
+{landing ? (
+  <header class="border-b border-brand-line bg-white">
+    <div class="wrap flex items-center justify-between py-3"><Logo lang={lang} link={false} /></div>
+  </header>
+) : (
+  <header class="sticky top-0 z-40 border-b border-brand-line bg-white/95 backdrop-blur">
+    <div class="wrap flex items-center gap-4 py-3">
+      <Logo lang={lang} />
+      <nav class="ml-auto hidden items-center gap-5 whitespace-nowrap text-[15px] font-semibold xl:flex" aria-label="Menu">
+        <a class="text-ink no-underline hover:text-brand" href={nav[0].href} {...here(nav[0].href)}>{nav[0].label}</a>
+        <details class="group relative">
+          <summary class="flex items-center gap-1 text-ink hover:text-brand">{ui.nav.specialties}<span aria-hidden="true" class="text-xs transition group-open:rotate-180">▾</span></summary>
+          <ul class="absolute left-0 top-full mt-3 w-72 rounded-xl border border-brand-line bg-white p-2 shadow-lg">
+            {specialties.map((s) => <li><a class="block rounded-lg px-3 py-2 font-medium text-ink no-underline hover:bg-brand-soft" href={s.href} {...here(s.href)}>{s.label}</a></li>)}
+          </ul>
+        </details>
+        {nav.slice(1).map((n) => <a class="text-ink no-underline hover:text-brand" href={n.href} {...here(n.href)}>{n.label}</a>)}
+      </nav>
+      <div class="ml-auto flex items-center gap-1 text-sm font-semibold xl:ml-0" aria-label="Language">
+        {LANGS.map((l) => (
+          <a href={alts[l] ?? prefix(l)} hreflang={l} lang={l} class={`rounded px-1.5 py-0.5 no-underline ${l === lang ? 'bg-brand text-white' : 'text-ink hover:bg-brand-soft'}`} {...(l === lang ? { 'aria-current': 'true' } : {})}>{LABEL[l]}</a>
+        ))}
+      </div>
+      <a href={wa} {...(waExternal ? { target: '_blank', rel: 'noopener' } : {})} class="btn hidden whitespace-nowrap !px-5 !py-2.5 text-[15px] xl:inline-flex">{ui.nav.book}</a>
+      <details class="relative xl:hidden">
+        <summary class="rounded-lg border border-brand-line p-2" aria-label={ui.menuOpen}><Icon name="menu" /></summary>
+        <div class="absolute right-0 top-full mt-2 w-[min(88vw,340px)] rounded-xl border border-brand-line bg-white p-3 shadow-xl">
+          <a class="block rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-brand-soft" href={nav[0].href}>{nav[0].label}</a>
+          <p class="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{ui.nav.specialties}</p>
+          {specialties.map((s) => <a class="block rounded-lg px-3 py-1.5 text-ink no-underline hover:bg-brand-soft" href={s.href}>{s.label}</a>)}
+          <hr class="my-2 border-brand-line" />
+          {nav.slice(1).map((n) => <a class="block rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-brand-soft" href={n.href}>{n.label}</a>)}
+          <a href={wa} {...(waExternal ? { target: '_blank', rel: 'noopener' } : {})} class="btn mt-2 w-full">{ui.nav.book}</a>
+        </div>
+      </details>
+    </div>
+  </header>
+)}
+
+<div class="border-b border-brand-line bg-brand-soft">
+  <ul class="wrap flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5 py-1.5 text-center text-[12px] font-semibold leading-snug text-brand-dark sm:text-sm">
+    {ui.trust.map((t) => <li class="flex items-center gap-1.5"><Icon name="check" size={14} />{t}</li>)}
+  </ul>
+</div>
+
+<main id="contenido">
+  <slot />
+</main>
+
+{landing ? (
+  <footer class="mt-10 border-t border-brand-line bg-brand-soft py-6 text-sm text-muted">
+    <div class="wrap space-y-2">
+      <p>{ui.footerLegal}</p>
+      <p>© {year} {site.name} · {site.clinic.legalName} · RUC {site.clinic.ruc} · {ui.lpNoMenu}</p>
+    </div>
+  </footer>
+) : (
+  <footer class="mt-16 border-t border-brand-line bg-[#F6FAF6] pt-12 pb-24 text-[15px] lg:pb-10">
+    <div class="wrap grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="space-y-3">
+        <Logo lang={lang} />
+        <p class="text-muted">{site.clinic.name} · {site.clinic.address}, {site.clinic.district}, {site.clinic.city}, Perú</p>
+        <p><a href={`mailto:${site.clinic.email}`}>{site.clinic.email}</a></p>
+      </div>
+      <div>
+        <p class="mb-2 font-semibold">{ui.nav.specialties}</p>
+        <ul class="space-y-1">{conditions.map((c) => <li><a class="text-ink no-underline hover:text-brand hover:underline" href={conditionHref(lang, c.key)}>{c.navLabel}</a></li>)}</ul>
+      </div>
+      <div>
+        <p class="mb-2 font-semibold">{site.name}</p>
+        <ul class="space-y-1">
+          {[...nav, specialties[specialties.length - 2], specialties[specialties.length - 1], { href: pageHref(lang, 'contact'), label: ui.footerLinks.contact }].map((n) => <li><a class="text-ink no-underline hover:text-brand hover:underline" href={n.href}>{n.label}</a></li>)}
+        </ul>
+      </div>
+      <div>
+        <p class="mb-2 font-semibold">Legal</p>
+        <ul class="space-y-1">
+          <li><a class="text-ink no-underline hover:text-brand hover:underline" href={pageHref(lang, 'terms')}>{ui.footerLinks.terms}</a></li>
+          <li><a class="text-ink no-underline hover:text-brand hover:underline" href={pageHref(lang, 'privacy')}>{ui.footerLinks.privacy}</a></li>
+          <li><a class="text-ink no-underline hover:text-brand hover:underline" href={pageHref(lang, 'consent')}>{ui.footerLinks.consent}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="wrap mt-10 space-y-2 border-t border-brand-line pt-6 text-sm text-muted">
+      <p>{ui.footerLegal}</p>
+      <p>© {year} {site.name} {site.tagline} · {site.clinic.legalName} · RUC {site.clinic.ruc}. {ui.rights}</p>
+    </div>
+  </footer>
+)}
+
+{!landing && <a href={wa} {...(waExternal ? { target: '_blank', rel: 'noopener' } : {})} class="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-brand px-4 py-3 font-semibold text-white no-underline shadow-lg lg:hidden" aria-label={ui.whatsappCta}>
+  <Icon name="whatsapp" size={22} /><span>{ui.whatsappCta}</span>
+</a>}
+{lang === 'fr' && <Cookie ui={ui} privacyHref={pageHref(lang, 'privacy')} />}
+</body>
+</html>

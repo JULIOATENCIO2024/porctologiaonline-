@@ -1,0 +1,251 @@
+---
+// Todas las rutas de los 3 idiomas salen de src/lib/routes.ts: páginas generales, enfermedades y landings /lp/.
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import Steps from '../components/Steps.astro';
+import PriceBox from '../components/PriceBox.astro';
+import Faq from '../components/Faq.astro';
+import Sections from '../components/Sections.astro';
+import Cta from '../components/Cta.astro';
+import Team from '../components/Team.astro';
+import { routes, content, conditionHref, pageHref, prefix, lpTag, LP_CONDITION, type Route } from '../lib/routes';
+import { buildSchema } from '../lib/schema';
+import { site, waHref, payHref, reviewer, docName, doctorById, attending, filled } from '../data/site';
+import type { Lang } from '../data/types';
+
+export function getStaticPaths() {
+  return routes.map((r) => ({ params: { path: r.path.replace(/^\/|\/$/g, '') || undefined }, props: { route: r } }));
+}
+
+const { route } = Astro.props as { route: Route };
+const lang: Lang = route.lang;
+const C = content[lang];
+const ui = C.ui;
+const url = new URL(route.path, site.url).href;
+const LABEL = { es: 'ES', en: 'EN', fr: 'FR' }[lang];
+const wa = waHref(`${ui.waMsg} (${LABEL} · ${lpTag(route)})`);
+const pay = payHref();
+const ext = (h: string) => (h.startsWith('http') ? { target: '_blank', rel: 'noopener' } : {});
+const home = { name: ui.breadcrumbHome, url: new URL(prefix(lang), site.url).href };
+const fmtDate = (iso: string) => {
+  const [y, m, d] = iso.split('-');
+  return lang === 'en' ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
+};
+const revLine = `${ui.reviewedBy} ${docName(reviewer, lang)} (CMP ${reviewer.cmp} · RNE ${reviewer.rne}) · ${ui.reviewedOn}: ${fmtDate(site.reviewedOn)}`;
+const priceTag = { es: `USD ${site.priceUsd} · ${site.minutes} minutos por videollamada`, en: `USD ${site.priceUsd} · ${site.minutes}-minute video visit`, fr: `${site.priceUsd} USD · visio de ${site.minutes} minutes` }[lang];
+const attendingDocs = attending[lang].map(doctorById);
+
+// ---------- datos por tipo ----------
+const cond = route.kind === 'condition' ? C.conditions.find((c) => c.key === route.key)! : null;
+const page = route.kind === 'page' ? C.pages.find((p) => p.key === route.key)! : null;
+const lp = route.kind === 'lp' ? C.landings.find((l) => l.key === route.key)! : null;
+const channel = route.kind === 'lp' ? route.channel : null;
+
+let title = '', description = '', schema: unknown = null, noindex = false;
+if (cond) {
+  title = cond.title; description = cond.description;
+  schema = buildSchema({ lang, url, title, description, type: 'MedicalWebPage', about: cond.navLabel, faqs: cond.faqs, crumbs: [home, { name: cond.navLabel, url }], physicians: [reviewer, ...attendingDocs.filter((d) => d.id !== reviewer.id)], withOffer: true });
+} else if (page) {
+  title = page.title; description = page.description;
+  const isHome = page.key === 'home';
+  const withDocs = ['home', 'team'].includes(page.key);
+  const withOffer = ['home', 'price', 'how', 'secondOpinion'].includes(page.key);
+  schema = buildSchema({ lang, url, title, description, faqs: page.faqs, crumbs: isHome ? undefined : [home, { name: page.h1, url }], physicians: withDocs ? attendingDocs : [], withOffer });
+} else if (lp) {
+  noindex = true;
+  const g = lp.google, m = lp.meta, t = lp.tiktok;
+  title = channel === 'g' ? g.title : channel === 'm' ? m.title : t.title;
+  description = channel === 'g' ? g.lead : channel === 'm' ? m.text : t.text;
+}
+const relCond = lp && LP_CONDITION[lp.key] ? C.conditions.find((c) => c.key === LP_CONDITION[lp.key])! : null;
+const more = { es: 'Más información', en: 'Learn more', fr: 'En savoir plus' }[lang];
+const mainDoc = attendingDocs[0];
+const video = site.LP_VIDEO[lang];
+const heroImg = mainDoc.photo || '/clinica/equipo-clinica-proctologica.webp';
+const cardsTitle = { es: 'Consultas más frecuentes', en: 'What we help with', fr: 'Motifs de consultation' }[lang];
+const contactLabels = {
+  es: { wa: 'WhatsApp de agenda', mail: 'Correo', addr: 'Sede', hours: 'Horario (hora de Lima)' },
+  en: { wa: 'Scheduling on WhatsApp', mail: 'Email', addr: 'Clinic', hours: 'Hours (Lima time)' },
+  fr: { wa: 'Prise de rendez-vous WhatsApp', mail: 'E-mail', addr: 'Clinique', hours: 'Horaires (heure de Lima)' },
+}[lang];
+const isLegal = page && ['terms', 'privacy', 'consent'].includes(page.key);
+---
+<Base route={route} title={title} description={description} schema={schema} noindex={noindex} landing={!!lp}>
+
+{cond && (
+  <article class="wrap">
+    <nav class="pt-6 text-sm text-muted" aria-label="Breadcrumb"><a href={prefix(lang)}>{ui.breadcrumbHome}</a> › <span>{cond.navLabel}</span></nav>
+    <header class="grid gap-8 py-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+      <div>
+        <p class="eyebrow mb-2">{priceTag}</p>
+        <h1 class="mb-4 text-3xl sm:text-5xl">{cond.h1}</h1>
+        <p class="mb-5 text-lg text-muted">{cond.whatIs}</p>
+        <div class="mb-4 flex flex-wrap gap-3">
+          <a href={wa} {...ext(wa)} class="btn"><Icon name="whatsapp" />{ui.nav.book}</a>
+          <a href={pageHref(lang, 'how')} class="btn-out">{ui.nav.how}</a>
+        </div>
+        <p class="text-sm text-muted">{revLine}</p>
+      </div>
+      <div class="grid gap-4">
+        <div class="card">
+          <h2 class="mb-2 font-sans text-lg font-bold">{ui.signsTitle}</h2>
+          <p class="mb-2 text-[15px] text-muted">{cond.signs.intro}</p>
+          <ul class="space-y-1.5 text-[15px]">{cond.signs.list.map((s) => <li class="flex gap-2"><span class="mt-1 text-brand"><Icon name="check" size={16} /></span><span set:html={s} /></li>)}</ul>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid gap-4 md:grid-cols-2" aria-label={ui.onlineCanTitle}>
+      <div class="card border-brand bg-brand-soft">
+        <h2 class="mb-3 flex items-center gap-2 font-sans text-lg font-bold text-brand-dark"><Icon name="video" />{ui.onlineCanTitle}</h2>
+        <ul class="space-y-1.5 text-[15px]">{cond.online.can.map((s) => <li class="flex gap-2"><span class="mt-1 text-brand"><Icon name="check" size={16} /></span><span set:html={s} /></li>)}</ul>
+      </div>
+      <div class="card">
+        <h2 class="mb-3 flex items-center gap-2 font-sans text-lg font-bold"><Icon name="x" />{ui.onlineCannotTitle}</h2>
+        <ul class="space-y-1.5 text-[15px]">{cond.online.cannot.map((s) => <li class="flex gap-2"><span class="mt-1 text-muted"><Icon name="x" size={16} /></span><span set:html={s} /></li>)}</ul>
+      </div>
+      <p class="text-[15px] text-muted md:col-span-2" set:html={cond.online.note} />
+    </section>
+
+    <aside class="mt-6 rounded-2xl border-2 border-[#B45309]/40 bg-[#FFFBEB] p-5" aria-label={ui.urgentTitle}>
+      <h2 class="mb-2 flex items-center gap-2 font-sans text-lg font-bold text-[#92400E]"><Icon name="alert" />{ui.urgentTitle}</h2>
+      <ul class="list-disc space-y-1 pl-6 text-[15px]">{cond.urgent.map((s) => <li set:html={s} />)}</ul>
+    </aside>
+
+    <h2 class="mt-12 text-2xl sm:text-3xl">{ui.howTitle}</h2>
+    <Steps ui={ui} title={false} />
+    <Sections sections={cond.sections} />
+    <Team lang={lang} title={ui.whoTitle} />
+    <PriceBox ui={ui} wa={wa} />
+    <Faq faqs={cond.faqs} title={ui.faqTitle} />
+    <section class="max-w-3xl py-6 text-sm text-muted">
+      <h2 class="mb-2 font-sans text-base font-bold text-ink">{ui.refsTitle}</h2>
+      <ol class="list-decimal space-y-1 pl-5">{cond.refs.map((r) => <li><a href={r.url} target="_blank" rel="noopener nofollow">{r.label}</a></li>)}</ol>
+      <p class="mt-3">{revLine}</p>
+    </section>
+    <Cta ui={ui} wa={wa} />
+  </article>
+)}
+
+{page && (
+  <div class="wrap">
+    {page.key !== 'home' && <nav class="pt-6 text-sm text-muted" aria-label="Breadcrumb"><a href={prefix(lang)}>{ui.breadcrumbHome}</a> › <span>{page.h1}</span></nav>}
+    {page.key === 'home' ? (
+      <header class="grid gap-8 py-10 lg:grid-cols-[1.3fr_1fr] lg:items-center">
+        <div>
+          <p class="eyebrow mb-2">{priceTag}</p>
+          <h1 class="mb-4 text-4xl sm:text-5xl">{page.h1}</h1>
+          <p class="mb-6 text-lg text-muted">{page.lead}</p>
+          <div class="flex flex-wrap gap-3">
+            <a href={wa} {...ext(wa)} class="btn text-lg"><Icon name="whatsapp" size={22} />{ui.nav.book}</a>
+            <a href={pageHref(lang, 'how')} class="btn-out text-lg">{ui.nav.how}</a>
+          </div>
+        </div>
+        <img src="/clinica/equipo-clinica-proctologica.webp" alt={site.clinic.name} width="560" height="840" fetchpriority="high" class="mx-auto max-h-[460px] w-auto rounded-3xl bg-brand-soft object-cover" />
+      </header>
+    ) : (
+      <header class="max-w-3xl py-8">
+        {!isLegal && <p class="eyebrow mb-2">{priceTag}</p>}
+        <h1 class="mb-4 text-3xl sm:text-5xl">{page.h1}</h1>
+        <p class="text-lg text-muted">{page.lead}</p>
+        {!isLegal && <div class="mt-5 flex flex-wrap gap-3"><a href={wa} {...ext(wa)} class="btn"><Icon name="whatsapp" />{ui.nav.book}</a></div>}
+      </header>
+    )}
+
+    {page.key === 'home' && (
+      <>
+        <Steps ui={ui} />
+        <section class="py-6" aria-labelledby="especialidades">
+          <h2 id="especialidades" class="mb-5 text-2xl sm:text-3xl">{cardsTitle}</h2>
+          <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {C.conditions.map((c) => (
+              <li><a href={conditionHref(lang, c.key)} class="card block h-full text-ink no-underline transition hover:border-brand hover:shadow-md">
+                <span class="mb-1 block font-serif text-xl font-semibold">{c.navLabel}</span>
+                <span class="block text-[15px] text-muted">{c.description.slice(0, 110).replace(/\s\S*$/, '')}…</span>
+                <span class="mt-2 block text-sm font-semibold text-brand">{more} →</span>
+              </a></li>
+            ))}
+            <li><a href={pageHref(lang, 'secondOpinion')} class="card block h-full border-brand bg-brand-soft text-ink no-underline hover:shadow-md">
+              <span class="mb-1 block font-serif text-xl font-semibold">{C.pages.find((p) => p.key === 'secondOpinion')!.h1}</span>
+              <span class="mt-2 block text-sm font-semibold text-brand">{more} →</span>
+            </a></li>
+          </ul>
+        </section>
+        <Sections sections={page.sections} />
+        <Team lang={lang} title={ui.whoTitle} />
+        <PriceBox ui={ui} wa={wa} />
+      </>
+    )}
+    {page.key === 'how' && (<><Steps ui={ui} /><Sections sections={page.sections} /><PriceBox ui={ui} wa={wa} /></>)}
+    {page.key === 'price' && (<><PriceBox ui={ui} wa={wa} /><Sections sections={page.sections} /></>)}
+    {page.key === 'team' && (<><Team lang={lang} title={ui.whoTitle} /><Sections sections={page.sections} /></>)}
+    {(page.key === 'secondOpinion' || page.key === 'treatmentLima') && (<><Sections sections={page.sections} /><Steps ui={ui} /><PriceBox ui={ui} wa={wa} /></>)}
+    {page.key === 'contact' && (
+      <>
+        <dl class="card grid max-w-3xl gap-4 sm:grid-cols-2">
+          <div><dt class="font-semibold">{contactLabels.wa}</dt><dd><a href={wa} {...ext(wa)} class="btn mt-2 !py-2"><Icon name="whatsapp" />{ui.whatsappCta}</a></dd></div>
+          <div><dt class="font-semibold">{contactLabels.mail}</dt><dd><a href={`mailto:${site.clinic.email}`}>{site.clinic.email}</a></dd></div>
+          <div><dt class="font-semibold">{contactLabels.addr}</dt><dd>{site.clinic.name}<br />{site.clinic.address}, {site.clinic.district}, {site.clinic.city}, Perú</dd></div>
+          {filled(site.hours[lang]) && <div><dt class="font-semibold">{contactLabels.hours}</dt><dd>{site.hours[lang]}</dd></div>}
+        </dl>
+        <Sections sections={page.sections} />
+      </>
+    )}
+    {(page.key === 'faq' || isLegal) && <Sections sections={page.sections} />}
+    {page.faqs && page.faqs.length > 0 && <Faq faqs={page.faqs} title={ui.faqTitle} />}
+    {!isLegal && <Cta ui={ui} wa={wa} />}
+  </div>
+)}
+
+{lp && channel === 'g' && (
+  <div class="wrap">
+    <header class="grid gap-8 py-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+      <div>
+        <p class="mb-3 inline-flex rounded-full bg-brand px-4 py-1.5 font-semibold text-white">{priceTag}</p>
+        <h1 class="mb-4 text-3xl sm:text-5xl">{lp.google.h1}</h1>
+        <p class="mb-5 text-lg text-muted">{lp.google.lead}</p>
+        <div class="mb-5 flex flex-wrap gap-3">
+          <a href={wa} {...ext(wa)} class="btn text-lg"><Icon name="whatsapp" size={22} />{ui.whatsappCta}</a>
+          <a href={pay} {...ext(pay)} class="btn-out text-lg"><Icon name="card" size={22} />{ui.priceBox.payCta}</a>
+        </div>
+        <ul class="space-y-1.5">{lp.google.bullets.map((b) => <li class="flex gap-2"><span class="mt-1 text-brand"><Icon name="check" size={18} /></span><span set:html={b} /></li>)}</ul>
+      </div>
+      <div class="card text-center">
+        <img src={heroImg} alt={docName(mainDoc, lang)} width="192" height="192" class="mx-auto mb-3 h-32 w-32 rounded-full bg-brand-soft object-cover object-top" />
+        <p class="font-serif text-xl font-semibold">{docName(mainDoc, lang)}</p>
+        {filled(mainDoc.cmp) && <p class="text-sm font-semibold text-brand-dark">CMP {mainDoc.cmp}{filled(mainDoc.rne) && ` · RNE ${mainDoc.rne}`}</p>}
+        <p class="mt-1 text-sm text-muted">{site.clinic.name}, {site.clinic.district}, Lima</p>
+      </div>
+    </header>
+    <Steps ui={ui} />
+    <Sections sections={lp.google.body} />
+    <Faq faqs={lp.google.faqs} title={ui.faqTitle} />
+    <Cta ui={ui} wa={wa} />
+  </div>
+)}
+
+{lp && (channel === 'm' || channel === 't') && (
+  <div class="mx-auto max-w-md px-4 py-6 text-center">
+    <div class="relative mx-auto mb-3 h-[38vh] min-h-[230px] overflow-hidden rounded-3xl bg-brand-soft">
+      {video
+        ? <video src={video} poster="/clinica/equipo-clinica-proctologica.webp" autoplay muted loop playsinline controls class="h-full w-full object-cover"></video>
+        : <img src="/clinica/equipo-clinica-proctologica.webp" alt={site.clinic.name} width="560" height="840" fetchpriority="high" class="h-full w-full object-cover object-[center_20%]" />}
+    </div>
+    <div class="mb-4 flex items-center justify-center gap-3 text-left">
+      {mainDoc.photo
+        ? <img src={mainDoc.photo} alt="" width="48" height="48" class="h-12 w-12 rounded-full object-cover object-top" />
+        : <span aria-hidden="true" class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft font-serif text-xl text-brand">{docName(mainDoc, lang).replace(/^(Dra?\.|Dre|Dr)\s*/, '')[0]}</span>}
+      <p class="leading-tight"><span class="block font-serif font-semibold">{docName(mainDoc, lang)}</span>
+        <span class="block text-sm text-muted">{filled(mainDoc.cmp) ? `CMP ${mainDoc.cmp}${filled(mainDoc.rne) ? ` · RNE ${mainDoc.rne}` : ''}` : site.clinic.name}</span></p>
+    </div>
+    <h1 class="mb-3 text-2xl sm:text-3xl">{channel === 'm' ? lp.meta.hook : lp.tiktok.hook}</h1>
+    <p class="mb-5 text-muted">{channel === 'm' ? lp.meta.text : lp.tiktok.text}</p>
+    <a href={wa} {...ext(wa)} id="agendar" class="btn w-full !py-4 text-xl"><Icon name="whatsapp" size={26} />{ui.whatsappCta}</a>
+    <p class="mt-3 text-sm font-semibold text-brand-dark">{priceTag}</p>
+    {channel === 'm' && (
+      <ul class="mt-6 space-y-2 text-left">{lp.meta.bullets.map((b) => <li class="flex gap-2"><span class="mt-1 text-brand"><Icon name="check" size={18} /></span><span set:html={b} /></li>)}</ul>
+    )}
+  </div>
+)}
+
+</Base>

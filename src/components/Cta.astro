@@ -1,0 +1,18 @@
+---
+// Bloque final con id="agendar": destino de los botones mientras falta el WhatsApp (TODO en site.ts).
+import Icon from './Icon.astro';
+import { payHref } from '../data/site';
+import type { Ui } from '../data/types';
+interface Props { ui: Ui; wa: string }
+const { ui, wa } = Astro.props;
+const pay = payHref();
+const ext = (h: string) => (h.startsWith('http') ? { target: '_blank', rel: 'noopener' } : {});
+---
+<section id="agendar" class="my-12 scroll-mt-24 rounded-3xl border border-brand-line bg-brand-soft p-6 text-center sm:p-10">
+  <h2 class="mb-3 text-2xl sm:text-3xl">{ui.ctaTitle}</h2>
+  <p class="mx-auto mb-6 max-w-2xl text-muted">{ui.ctaText}</p>
+  <div class="flex flex-wrap justify-center gap-3">
+    <a href={wa} {...ext(wa)} class="btn text-lg"><Icon name="whatsapp" size={22} />{ui.whatsappCta}</a>
+    <a href={pay} {...ext(pay)} class="btn-out text-lg"><Icon name="card" size={22} />{ui.priceBox.payCta}</a>
+  </div>
+</section>

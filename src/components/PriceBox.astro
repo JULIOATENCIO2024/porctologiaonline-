@@ -1,0 +1,29 @@
+---
+// Precio único USD 50: pago con link antes de la cita, informe escrito, reembolso si no se realiza.
+import Icon from './Icon.astro';
+import { payHref } from '../data/site';
+import type { Ui } from '../data/types';
+interface Props { ui: Ui; wa: string }
+const { ui, wa } = Astro.props;
+const pay = payHref();
+const ext = (h: string) => (h.startsWith('http') ? { target: '_blank', rel: 'noopener' } : {});
+---
+<section class="py-10" aria-labelledby="precio">
+  <div class="grid items-center gap-6 rounded-3xl bg-brand p-6 text-white sm:p-10 lg:grid-cols-[1fr_1.2fr]">
+    <div>
+      <h2 id="precio" class="mb-2 text-2xl !text-white sm:text-3xl">{ui.priceBox.title}</h2>
+      <p class="font-serif text-6xl font-semibold leading-none">{ui.priceBox.amount}</p>
+      <p class="mt-2 text-white/90">{ui.priceBox.per}</p>
+    </div>
+    <div>
+      <ul class="mb-5 space-y-2">
+        {ui.priceBox.includes.map((t) => <li class="flex gap-2"><span class="mt-1 text-[#BFE3B9]"><Icon name="check" size={18} /></span><span>{t}</span></li>)}
+      </ul>
+      <p class="mb-5 text-sm text-white/90">{ui.priceBox.refund}</p>
+      <div class="flex flex-wrap gap-3">
+        <a href={wa} {...ext(wa)} class="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-brand no-underline hover:bg-brand-soft"><Icon name="whatsapp" />{ui.priceBox.cta}</a>
+        <a href={pay} {...ext(pay)} class="inline-flex items-center gap-2 rounded-full border-2 border-white px-6 py-3 font-semibold text-white no-underline hover:bg-white/10"><Icon name="card" />{ui.priceBox.payCta}</a>
+      </div>
+    </div>
+  </div>
+</section>

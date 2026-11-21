@@ -1,0 +1,28 @@
+---
+// Banner de cookies de /fr/ (RGPD / Loi 25 du Québec, BUILD §6): Meta y TikTok no cargan hasta «Accepter».
+import type { Ui } from '../data/types';
+interface Props { ui: Ui; privacyHref: string }
+const { ui, privacyHref } = Astro.props;
+const c = ui.cookie;
+---
+{c && (
+  <div id="po-cookie" hidden class="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-2xl border border-brand-line bg-white p-4 shadow-xl sm:p-5" role="dialog" aria-live="polite" aria-label="Cookies">
+    <p class="mb-3 text-[15px] leading-snug">{c.text} <a href={privacyHref}>{c.more}</a></p>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" data-consent="yes" class="btn !py-2">{c.accept}</button>
+      <button type="button" data-consent="no" class="btn-out !py-2">{c.reject}</button>
+    </div>
+  </div>
+  <script is:inline>
+  (function(){
+    var b=document.getElementById('po-cookie');var v=null;try{v=localStorage.getItem('po-consent');}catch(e){}
+    if(!v)b.hidden=false;
+    b.addEventListener('click',function(e){
+      var t=e.target.closest('[data-consent]');if(!t)return;var ok=t.getAttribute('data-consent')==='yes';
+      try{localStorage.setItem('po-consent',ok?'yes':'no');}catch(e){}
+      b.hidden=true;
+      if(ok){if(window.gtag)gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});if(window.poLoadAds)window.poLoadAds();}
+    });
+  })();
+  </script>
+)}
